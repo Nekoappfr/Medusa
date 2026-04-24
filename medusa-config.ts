@@ -12,5 +12,25 @@ module.exports = defineConfig({
       jwtSecret: process.env.JWT_SECRET || "supersecret",
       cookieSecret: process.env.COOKIE_SECRET || "supersecret",
     }
-  }
+  },
+  modules: [
+    {
+      resolve: "./src/modules/cat",
+    },
+    {
+      resolve: "./src/modules/sitter",
+    },
+    {
+      resolve: "./src/modules/ad",
+    },
+    {
+      resolve: "./src/modules/application",
+    },
+    {
+      resolve: "./src/modules/booking",
+    },
+    {
+      resolve: "./src/modules/review",
+    },
+  ],
 })
