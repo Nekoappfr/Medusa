@@ -20,21 +20,6 @@ module.exports = defineConfig({
     { resolve: "./src/modules/application" },
     { resolve: "./src/modules/booking" },
     { resolve: "./src/modules/review" },
-    {
-      resolve: "@medusajs/medusa/payment",
-      options: {
-        providers: [
-          {
-            resolve: "./src/providers/payment/mollie",
-            id: "mollie",
-            options: {
-              api_key: process.env.MOLLIE_API_KEY,
-              redirect_url: process.env.MOLLIE_REDIRECT_URL || "https://nekoapp.fr/paiement/confirmation",
-              webhook_url: process.env.MOLLIE_WEBHOOK_URL || "https://api.nekoapp.fr/hooks/payment/mollie",
-            },
-          },
-        ],
-      },
-    },
+    // Mollie sera réintégré dans une prochaine étape
   ],
 })
