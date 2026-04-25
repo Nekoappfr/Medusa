@@ -8,8 +8,17 @@ const Sitter = model.define("sitter", {
   service_types: model.array(),
   city: model.text(),
   neighborhood: model.text().nullable(),
+  arrondissement: model.text().nullable(),
   is_available: model.boolean().default(true),
+  is_expert: model.boolean().default(false),
   rating: model.float().default(0),
+  review_count: model.number().default(0),
+  price_per_night: model.number().default(20),
+  response_time: model.text().nullable(),
+  years_experience: model.number().default(0),
+  completed_bookings: model.number().default(0),
+  tags: model.array(),
+  color_tint: model.text().nullable(),
 })
 
 export default Sitter
