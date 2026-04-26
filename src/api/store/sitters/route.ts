@@ -18,3 +18,23 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
   const sitters = await sitterService.listSitters(filters)
   res.json({ sitters, count: sitters.length })
 }
+
+export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  const sitterService = req.scope.resolve(SITTER_MODULE)
+
+  const { bio, service_types, neighborhood, city } = req.body as {
+    bio: string
+    service_types: string[]
+    neighborhood?: string
+    city?: string
+  }
+
+  const sitter = await sitterService.createSitters({
+    bio,
+    service_types,
+    neighborhood: neighborhood ?? "Paris",
+    city: city ?? "Paris",
+  })
+
+  res.status(201).json({ sitter })
+}
