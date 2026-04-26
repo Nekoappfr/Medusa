@@ -30,16 +30,19 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     profile_type: "student" | "teenager" | "traveler"
   }
 
-  const user_id = (req as any).auth_context?.actor_id ?? ""
+  const user_id = (req as any).auth_context?.actor_id ?? "anonymous"
 
-  const sitter = await sitterService.createSitters({
-    user_id,
-    bio,
-    profile_type,
-    service_types,
-    neighborhood: neighborhood ?? "Paris",
-    city: city ?? "Paris",
-  })
-
-  res.status(201).json({ sitter })
+  try {
+    const sitter = await sitterService.createSitters({
+      user_id,
+      bio,
+      profile_type,
+      service_types,
+      neighborhood: neighborhood ?? "Paris",
+      city: city ?? "Paris",
+    })
+    res.status(201).json({ sitter })
+  } catch (error: any) {
+    res.status(500).json({ message: error.message, details: String(error) })
+  }
 }
