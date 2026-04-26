@@ -22,15 +22,20 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const sitterService = req.scope.resolve(SITTER_MODULE)
 
-  const { bio, service_types, neighborhood, city } = req.body as {
+  const { bio, service_types, neighborhood, city, profile_type } = req.body as {
     bio: string
     service_types: string[]
     neighborhood?: string
     city?: string
+    profile_type: "student" | "teenager" | "traveler"
   }
 
+  const user_id = (req as any).auth_context?.actor_id ?? ""
+
   const sitter = await sitterService.createSitters({
+    user_id,
     bio,
+    profile_type,
     service_types,
     neighborhood: neighborhood ?? "Paris",
     city: city ?? "Paris",
