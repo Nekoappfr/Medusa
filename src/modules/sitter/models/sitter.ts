@@ -2,7 +2,11 @@ import { model } from "@medusajs/framework/utils"
 
 const Sitter = model.define("sitter", {
   id: model.id().primaryKey(),
-  user_id: model.text(),
+  user_id: model.text().nullable(),
+  email: model.text(),
+  first_name: model.text().nullable(),
+  last_name: model.text().nullable(),
+  phone: model.text().nullable(),
   bio: model.text().nullable(),
   profile_type: model.enum(["student", "teenager", "traveler"]),
   service_types: model.array(),

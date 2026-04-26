@@ -15,6 +15,7 @@ module.exports = defineConfig({
   },
   modules: [
     { resolve: "./src/modules/cat" },
+    { resolve: "./src/modules/owner" },
     { resolve: "./src/modules/sitter" },
     { resolve: "./src/modules/ad" },
     { resolve: "./src/modules/application" },
