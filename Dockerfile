@@ -10,7 +10,7 @@ COPY . .
 
 RUN npx medusa build
 
-RUN ls -la /app/.medusa/server/ && ls -la /app/.medusa/server/public/ 2>/dev/null || echo "WARNING: no public dir"
+RUN test -f /app/.medusa/server/public/admin/index.html || (echo "ERROR: admin index.html missing after build" && exit 1)
 
 EXPOSE 9000
 
