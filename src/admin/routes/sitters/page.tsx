@@ -40,6 +40,9 @@ export default function SittersPage() {
   useEffect(() => {
     fetch("/store/sitters", {
       credentials: "include",
+      headers: {
+        "x-publishable-api-key": "pk_02454d6725796fc4e706310bac6cba7f5ca2c46ea493b61b70e700fac788247d",
+      },
     })
       .then((r) => r.json())
       .then((data) => {
