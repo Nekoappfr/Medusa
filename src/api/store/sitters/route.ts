@@ -38,6 +38,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
       bio,
       profile_type,
       service_types,
+      tags: [],
       neighborhood: neighborhood ?? "Paris",
       city: city ?? "Paris",
     })
