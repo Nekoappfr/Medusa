@@ -10,8 +10,8 @@ COPY . .
 
 RUN npx medusa build
 
-RUN test -f /app/.medusa/server/public/admin/index.html || (echo "ERROR: admin index.html missing after build" && exit 1)
+RUN test -f /app/.medusa/server/public/admin/index.html || (echo "ERROR: admin index.html missing" && exit 1)
 
 EXPOSE 9000
 
-CMD npx medusa db:migrate && npx medusa start
+CMD npx medusa db:migrate && cd /app/.medusa/server && npx medusa start
