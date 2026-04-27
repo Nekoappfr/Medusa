@@ -14,4 +14,4 @@ RUN test -f /app/.medusa/server/public/admin/index.html || (echo "ERROR: admin i
 
 EXPOSE 9000
 
-CMD npx medusa db:migrate && node /app/.medusa/server/index.js
+CMD npx medusa db:migrate && npx medusa start
