@@ -34,32 +34,43 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
     return res.status(400).json({ message: "Champs obligatoires manquants" })
   }
 
-  const contactVal = String(contact_value)
-  const isEmail = contact_method === "email"
-  const email = isEmail ? contactVal : `${contactVal.replace(/\D/g, "")}@neko-guest.fr`
+  const parsedStart = new Date(String(start_date))
+  const parsedEnd = new Date(String(end_date))
+  if (isNaN(parsedStart.getTime()) || isNaN(parsedEnd.getTime())) {
+    return res.status(400).json({ message: "Dates invalides" })
+  }
 
-  const ownerData: Record<string, unknown> = { email }
-  if (!isEmail) ownerData.phone = contactVal
+  try {
+    const contactVal = String(contact_value)
+    const isEmail = contact_method === "email"
+    const email = isEmail ? contactVal : `${contactVal.replace(/\D/g, "")}@neko-guest.fr`
 
-  const owner = await ownerService.createOwners(ownerData)
+    const ownerData: Record<string, unknown> = { email }
+    if (!isEmail) ownerData.phone = contactVal
 
-  const cat = await catService.createCats({
-    name: String(cat_name),
-    breed: "Non précisé",
-    age: 1,
-    owner_id: owner.id,
-    notes: cat_notes ? String(cat_notes) : undefined,
-  })
+    const owner = await ownerService.createOwners(ownerData)
 
-  const ad = await adService.createAds({
-    owner_id: owner.id,
-    cat_id: cat.id,
-    service_type: "boarding",
-    start_date: new Date(String(start_date)),
-    end_date: new Date(String(end_date)),
-    price_per_night: 20,
-    neighborhood: neighborhood ? String(neighborhood) : undefined,
-  })
+    const cat = await catService.createCats({
+      name: String(cat_name),
+      breed: "Non précisé",
+      age: 1,
+      owner_id: owner.id,
+      notes: cat_notes ? String(cat_notes) : null,
+    })
 
-  res.status(201).json({ ad_id: ad.id })
+    const ad = await adService.createAds({
+      owner_id: owner.id,
+      cat_id: cat.id,
+      service_type: "boarding",
+      start_date: parsedStart,
+      end_date: parsedEnd,
+      price_per_night: 20,
+      neighborhood: neighborhood ? String(neighborhood) : null,
+    })
+
+    res.status(201).json({ ad_id: ad.id })
+  } catch (err: any) {
+    console.error("[quick-ads] POST error:", err)
+    res.status(500).json({ message: err?.message ?? "Erreur serveur interne" })
+  }
 }
