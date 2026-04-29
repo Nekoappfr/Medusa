@@ -18,11 +18,40 @@ Tous enregistrés dans `medusa-config.ts`.
 ## Coolify
 
 - URL panel : `https://coolify.nekoapp.fr`
-- Token API : `7|MbVLOVa0mYW3LAdWTA12FuteYa7hGhhhTlPbICdw47a4de30`
+- Token API : `9|odHMdkouupQYtyRYivgR8jnWjZBtmlHjCgxNAni030e6fb65`
 - App UUID Medusa : `h30215jlpztpg88za92wlpyx`
-- Déclencher un redéploiement : `GET https://coolify.nekoapp.fr/api/v1/deploy?uuid=h30215jlpztpg88za92wlpyx`
+- Déclencher un redéploiement : `POST https://coolify.nekoapp.fr/api/v1/deploy?uuid=h30215jlpztpg88za92wlpyx`
+- Vérifier le statut d'un déploiement : `GET https://coolify.nekoapp.fr/api/v1/deployments/{deployment_uuid}`
 
 ## Modèles
+
+### Ad
+```
+id, owner_id, cat_id, service_type (boarding/visit/housesitting),
+start_date, end_date, price_per_night, status (open/matched/confirmed/completed/cancelled → défaut open),
+neighborhood (nullable), notes (nullable)
+```
+
+### Cat
+```
+id, name, breed, age, is_medicated, is_anxious, is_kitten, notes (nullable), owner_id
+```
+
+### Application
+```
+id, ad_id, sitter_id, message (nullable), status (pending/accepted/rejected → défaut pending)
+```
+
+### Booking
+```
+id, ad_id, sitter_id, owner_id, status (confirmed/in_progress/completed/cancelled → défaut confirmed),
+total_price, platform_fee
+```
+
+### Review
+```
+id, booking_id, reviewer_id, reviewed_id, rating, comment (nullable)
+```
 
 ### Sitter
 ```
@@ -43,13 +72,19 @@ phone (nullable), arrondissement (nullable)
 - `GET/POST /store/sitters` — liste et création sitters
 - `GET /store/sitters/:id`
 - `GET/POST /store/owners` — liste et création owners
+- `GET/POST /store/ads` — liste (avec filtres `?status=`, `?owner_id=`, `?service_type=`) et création
+- `GET /store/ads/:id`
+- `POST /store/quick-ads` — création annonce sans inscription (owner + cat + ad en une seule requête)
 - Middleware Bearer auth sur POST `/store/sitters` et POST `/store/owners` : `src/api/middlewares.ts`
+- `/store/quick-ads` est exempt de middleware auth — gère ses propres CORS manuellement
 
 ## Panel admin custom (Extensions)
 
 - Sitters : `src/admin/routes/sitters/page.tsx` → `https://api.nekoapp.fr/app/sitters`
 - Propriétaires : `src/admin/routes/owners/page.tsx` → `https://api.nekoapp.fr/app/owners`
-- Les deux fetchent depuis `/store/*` avec `x-publishable-api-key` en header
+- Annonces : `src/admin/routes/ads/page.tsx` → `https://api.nekoapp.fr/app/ads`
+- Tous fetchent depuis `/store/*` avec `x-publishable-api-key` en header
+- La page Annonces a des boutons de filtre par statut (Ouverte, Matchée, Confirmée, Terminée, Annulée)
 
 ---
 
@@ -119,15 +154,105 @@ Points clés :
 
 ---
 
+---
+
+## Problème 4 : Tables custom absentes en prod — `relation "owner" does not exist` (avril 2026)
+
+### Symptôme
+
+POST `/store/quick-ads` → HTTP 500. Erreur réelle (visible après ajout du try/catch) :
+`insert into "owner" (...) - relation "owner" does not exist`
+
+### Cause
+
+Les fichiers de migration des modules custom n'avaient jamais été générés ni committés dans le repo. La commande `npx medusa db:migrate` au démarrage ne fait rien s'il n'y a pas de fichiers de migration — elle ne crée pas les tables automatiquement depuis les définitions de modèles.
+
+Les modules Medusa built-in (api_key, auth, etc.) ont leurs migrations dans leurs propres packages npm, donc leurs tables existent. Les modules custom (`owner`, `cat`, `ad`, etc.) n'avaient aucune migration → aucune table.
+
+### Fix
+
+Créer manuellement les fichiers de migration pour chaque module custom dans `src/modules/<module>/migrations/`. Format requis :
+
+```typescript
+import { Migration } from "@medusajs/framework/mikro-orm/migrations"
+
+export class Migration20260101000000_InitOwner extends Migration {
+  async up(): Promise<void> {
+    this.addSql(`create table if not exists "owner" (
+      "id" text not null,
+      ...
+      constraint "owner_pkey" primary key ("id")
+    );`)
+  }
+  async down(): Promise<void> {
+    this.addSql(`drop table if exists "owner";`)
+  }
+}
+```
+
+Migrations créées (toutes dans `src/modules/<module>/migrations/`) :
+- `Migration20260101000000_InitOwner.ts`
+- `Migration20260101000001_InitCat.ts`
+- `Migration20260101000002_InitAd.ts`
+- `Migration20260101000003_InitSitter.ts`
+- `Migration20260101000004_InitApplication.ts`
+- `Migration20260101000005_InitBooking.ts`
+- `Migration20260101000006_InitReview.ts`
+
+**À retenir** : Tout nouveau module custom nécessite un fichier de migration avant le déploiement. Utiliser `CREATE TABLE IF NOT EXISTS` pour que la migration soit idempotente.
+
+---
+
+## Problème 5 : `undefined` vs `null` pour les champs nullable (avril 2026)
+
+### Symptôme
+
+Potentiel crash silencieux lors de l'insertion si un champ nullable reçoit `undefined` au lieu de `null`.
+
+### Cause
+
+MikroORM attend `null` pour représenter SQL NULL. Passer `undefined` JavaScript peut provoquer une erreur selon la version de l'ORM.
+
+### Fix
+
+Dans les handlers de routes, toujours passer `null` (pas `undefined`) pour les champs nullable :
+```typescript
+notes: cat_notes ? String(cat_notes) : null,       // ✓
+neighborhood: neighborhood ? String(neighborhood) : null,  // ✓
+// pas undefined ✗
+```
+
+---
+
+## Bonnes pratiques routes custom
+
+1. **Toujours entourer les appels de service d'un try/catch** et logger `err.message` :
+   ```typescript
+   } catch (err: any) {
+     console.error("[route-name] POST error:", err)
+     res.status(500).json({ message: err?.message ?? "Erreur serveur interne" })
+   }
+   ```
+   Sans ça, les 500 sont opaques et impossibles à débugger sans accès aux logs Coolify.
+
+2. **Valider les dates avant insertion** :
+   ```typescript
+   const parsed = new Date(String(start_date))
+   if (isNaN(parsed.getTime())) return res.status(400).json({ message: "Date invalide" })
+   ```
+
+---
+
 ## Ce qui est fonctionnel en prod
 
 - Inscription sitter → POST `/store/sitters` avec Bearer token
 - Inscription owner → POST `/store/owners` avec Bearer token
-- Panel admin : Sitters + Propriétaires visibles dans Extensions
-- API `/store/sitters` et `/store/owners` accessibles publiquement (GET)
+- Création d'annonce sans inscription → POST `/store/quick-ads` (crée owner + cat + ad en une requête)
+- Panel admin : Sitters + Propriétaires + Annonces visibles dans Extensions
+- API `/store/sitters`, `/store/owners`, `/store/ads` accessibles publiquement (GET)
+- Filtrage des annonces par statut depuis le panel admin
 
 ## Ce qui reste à brancher
 
 - Connexion (`connexion.html`)
-- Création d'annonce (`creer-annonce.html`)
 - Messagerie, réservations
